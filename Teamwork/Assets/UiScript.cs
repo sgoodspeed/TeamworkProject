@@ -16,7 +16,7 @@ public class UiScript : MonoBehaviour {
 	void OnGUI (){
 		
 		if(GUI.Button (new Rect(200f,200f,200f,200f), "Start Game")){
-			Application.LoadLevel("gameScene");	
+			Application.LoadLevel("GameplayScene");	
 		}
 	}
 
