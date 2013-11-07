@@ -13,7 +13,7 @@ public class CubeBehavior : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-	
+	  // Added some new code
 	}
 	
 	void OnMouseDown () {
