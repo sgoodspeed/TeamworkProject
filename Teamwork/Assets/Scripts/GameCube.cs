@@ -6,7 +6,7 @@ public class GameCube {
 	private int colorIndex;
 	private int x, y;
 	private GameObject cube;
-	
+	private bool active;
 	
 	// Constructor. When we create the GameCube object, we'll set the values of various important items
 	public GameCube (int startX, int startY, GameObject aCube) {
@@ -14,6 +14,7 @@ public class GameCube {
 		x = startX;
 		y = startY;
 		cube = aCube;
+		active = false;
 		aCube.GetComponent<CubeBehavior>().x = x;
 		aCube.GetComponent<CubeBehavior>().y = y;
 	
@@ -26,6 +27,18 @@ public class GameCube {
 	
 	public int GetColorIndex () {
 		return colorIndex;
+	}
+
+	public bool IsActive () {
+		return active;
+	}
+
+	public void SetActive (bool act) {
+		active = act;
+		
+		// turn on or off a visual effect based on whether or not it's active
+		
+		
 	}
 
 }
