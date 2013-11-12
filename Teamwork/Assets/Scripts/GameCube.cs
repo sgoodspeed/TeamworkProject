@@ -13,10 +13,10 @@ public class GameCube {
 		colorIndex = 0;
 		x = startX;
 		y = startY;
-		cube = aCube;
 		active = false;
-		aCube.GetComponent<CubeBehavior>().x = x;
-		aCube.GetComponent<CubeBehavior>().y = y;
+		cube = aCube;
+		cube.GetComponent<CubeBehavior>().x = x;
+		cube.GetComponent<CubeBehavior>().y = y;
 	
 	}
 	
