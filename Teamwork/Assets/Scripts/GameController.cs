@@ -118,52 +118,43 @@ public class GameController : MonoBehaviour {
 	}
 	
 	private void ProcessKeyboardInput () {
+		int row = -1;
+		
 		// Only do something if the NextCube is not hidden
 		if (!nextCube.IsHidden()) {
-			// move the cube to the appropriate row based on what was pressed
-			// switch isn't appropriate with Input.inputString since the player could mash multiple buttons simultaneously
+			
+			// Did we detect a number key?
+			// Note that using Input.inputString is tricky since the player could mash multiple buttons simultaneously,
+			// so use GetKeyDown instead
 			if (Input.GetKeyDown("1")) {
-				// hide a random white cube in the appropriate row
-				if (HideRandomWhiteCube(0) == false) {
-					// and if we can't, end the game
-					Application.LoadLevel("GameSummaryScene");
-				}
+				row = 0;
 			}
-			// give preference to the higher rows; if the player presses 1 and 2 at the same time, move to row 1
+			// give preference to lower rows; if the player presses 1 and 2 at the same time, move to row 1
 			else if (Input.GetKeyDown("2")) {
-				// hide a random white cube in the appropriate row
-				if (HideRandomWhiteCube(1) == false) {
-					// and if we can't, end the game
-					Application.LoadLevel("GameSummaryScene");
-				}
+				row = 1;
 			}
-			// give preference to the higher rows; if the player presses 1 and 2 at the same time, move to row 1
 			else if (Input.GetKeyDown("3")) {
-				// hide a random white cube in the appropriate row
-				if (HideRandomWhiteCube(2) == false) {
-					// and if we can't, end the game
-					Application.LoadLevel("GameSummaryScene");
-				}
+				row = 2;
 			}
-			// give preference to the higher rows; if the player presses 1 and 2 at the same time, move to row 1
 			else if (Input.GetKeyDown("4")) {
-				// hide a random white cube in the appropriate row
-				if (HideRandomWhiteCube(3) == false) {
-					// and if we can't, end the game
-					Application.LoadLevel("GameSummaryScene");
-				}
+				row = 3;
 			}
-			// give preference to the higher rows; if the player presses 1 and 2 at the same time, move to row 1
 			else if (Input.GetKeyDown("5")) {
-				// hide a random white cube in the appropriate row
-				if (HideRandomWhiteCube(4) == false) {
-					// and if we can't, end the game
-					Application.LoadLevel("GameSummaryScene");
-				}
+				row = 4;
 			}
 			
+			// if we detected a valid key
+			if (row >= 0) {
+				// hide a random white cube in the appropriate row
+				if (ColorRandomWhiteCube(row) == false) {
+					// and if we can't, end the game
+					Application.LoadLevel("GameSummaryScene");
+				}
+				
+				// hide the next cube display
+				nextCube.SetHidden(true);
+			}
 		}
-		
 	}
 		
 
@@ -249,19 +240,25 @@ public class GameController : MonoBehaviour {
 		int randColor = Random.Range(2, 7);
 		int randX = Random.Range(0, gridWidth);
 		int randY = Random.Range(0, gridHeight);
-		cubes[randX,randY].SetColor(randColor, cubeColors[randColor]);	
+		
+		// we should check to see if it's already hidden first!
+		// TESTING ONLY
+		cubes[randX,randY].SetHidden(true);	
 		
 		return true;
 	}
 
-	private bool HideRandomWhiteCube(int row) {
+	private bool ColorRandomWhiteCube(int row) {
 		// DEBUG ONLY
-		// Make a random cube colored
-		// 0 is white and 1 is grey, so use 2-7
-		int randColor = Random.Range(2, 7);
-		int randY = Random.Range(0, gridHeight);
-		cubes[row,randY].SetColor(randColor, cubeColors[randColor]);	
+		// we should have a more intelligent random algorithm here
+		int randX = Random.Range(0, gridWidth);
 		
+		// we should check to see if it's already hidden first!
+		// TESTING ONLY
+
+		// set the chosen cube to the color of the next cube
+		cubes[randX,row].SetColor(nextCube.GetColorIndex(), cubeColors[nextCube.GetColorIndex()]);	
+			
 		return true;
 	}
 
