@@ -8,7 +8,8 @@ public class GameController : MonoBehaviour {
 	private Color[] cubeColors;
 	private int[] colorValues;
 	public int gridWidth, gridHeight;
-	public GameObject aCube;
+	public GameObject aCube, unclickableCube;
+	private GameCube nextCube;
 	private int activeCubeX, activeCubeY;
 	public float turnLength, gameLength;
 	private float turnTimer, gameTimer;
@@ -24,19 +25,29 @@ public class GameController : MonoBehaviour {
 		turnTimer = 0f;
 		gameTimer = gameLength;
 		
+		// available colors
+		cubeColors = new Color[] {Color.white, Color.gray, Color.black, Color.blue, Color.green, Color.red, Color.yellow};
+		colorValues = new int[] {0, 1, 2, 4, 8, 16, 32};
+
 		// track the active cube. Default to -1 at initialization
 		activeCubeX = -1;
 		activeCubeY = -1;
+
 		
 		cubes = new GameCube[gridWidth, gridHeight];
-		cubeColors = new Color[] {Color.white, Color.gray, Color.black, Color.blue, Color.green, Color.red, Color.yellow};
-		colorValues = new int[] {0, 1, 2, 4, 8, 16, 32};
-		
+		// create the grid
 		for (int x = 0; x < gridWidth; x++) {
 			for (int y = 0; y < gridHeight; y++) {
 				cubes[x,y] = new GameCube(x, y, (GameObject) Instantiate(aCube, new Vector3(x*2 - 7, y*2 - 3, 2), Quaternion.identity));
 			}
 		}
+
+		// create the next cube - it's a special prefab without a script on it to avoid being clickable
+		nextCube = new GameCube((GameObject) Instantiate(unclickableCube, new Vector3(0, 7.5f, 2), Quaternion.identity));
+		
+		// start with a cube in the Next Cube area
+		ShowNextCube();
+		
 	}
 	
 	// When a cube is clicked
@@ -107,6 +118,52 @@ public class GameController : MonoBehaviour {
 	}
 	
 	private void ProcessKeyboardInput () {
+		// Only do something if the NextCube is not hidden
+		if (!nextCube.IsHidden()) {
+			// move the cube to the appropriate row based on what was pressed
+			// switch isn't appropriate with Input.inputString since the player could mash multiple buttons simultaneously
+			if (Input.GetKeyDown("1")) {
+				// hide a random white cube in the appropriate row
+				if (HideRandomWhiteCube(0) == false) {
+					// and if we can't, end the game
+					Application.LoadLevel("GameSummaryScene");
+				}
+			}
+			// give preference to the higher rows; if the player presses 1 and 2 at the same time, move to row 1
+			else if (Input.GetKeyDown("2")) {
+				// hide a random white cube in the appropriate row
+				if (HideRandomWhiteCube(1) == false) {
+					// and if we can't, end the game
+					Application.LoadLevel("GameSummaryScene");
+				}
+			}
+			// give preference to the higher rows; if the player presses 1 and 2 at the same time, move to row 1
+			else if (Input.GetKeyDown("3")) {
+				// hide a random white cube in the appropriate row
+				if (HideRandomWhiteCube(2) == false) {
+					// and if we can't, end the game
+					Application.LoadLevel("GameSummaryScene");
+				}
+			}
+			// give preference to the higher rows; if the player presses 1 and 2 at the same time, move to row 1
+			else if (Input.GetKeyDown("4")) {
+				// hide a random white cube in the appropriate row
+				if (HideRandomWhiteCube(3) == false) {
+					// and if we can't, end the game
+					Application.LoadLevel("GameSummaryScene");
+				}
+			}
+			// give preference to the higher rows; if the player presses 1 and 2 at the same time, move to row 1
+			else if (Input.GetKeyDown("5")) {
+				// hide a random white cube in the appropriate row
+				if (HideRandomWhiteCube(4) == false) {
+					// and if we can't, end the game
+					Application.LoadLevel("GameSummaryScene");
+				}
+			}
+			
+		}
+		
 	}
 		
 
@@ -174,27 +231,69 @@ public class GameController : MonoBehaviour {
 		cubes[x, y-1].SetColor(1, cubeColors[1]);
 	}
 	
+	private void ShowNextCube () {
+		// Make a random cube colored
+		// 0 is white and 1 is grey, so use 2 through the length of the cubeColors array
+		// Range using ints is inclusive for the first argument, and exclusive for the second argument
+		int randColor = Random.Range(2, cubeColors.Length);
+		nextCube.SetColor(randColor, cubeColors[randColor]);
+		
+		// make the cube visible in case it was hidden before
+		nextCube.SetHidden(false);
+	}
+	
+	private bool HideRandomWhiteCube() {
+		// DEBUG ONLY
+		// Make a random cube colored
+		// 0 is white and 1 is grey, so use 2-7
+		int randColor = Random.Range(2, 7);
+		int randX = Random.Range(0, gridWidth);
+		int randY = Random.Range(0, gridHeight);
+		cubes[randX,randY].SetColor(randColor, cubeColors[randColor]);	
+		
+		return true;
+	}
+
+	private bool HideRandomWhiteCube(int row) {
+		// DEBUG ONLY
+		// Make a random cube colored
+		// 0 is white and 1 is grey, so use 2-7
+		int randColor = Random.Range(2, 7);
+		int randY = Random.Range(0, gridHeight);
+		cubes[row,randY].SetColor(randColor, cubeColors[randColor]);	
+		
+		return true;
+	}
+
 	// Update is called once per frame
 	void Update () {
+		// Check for keyboard input every frame
+		ProcessKeyboardInput();
+		
+		// update the timers
 		turnTimer += Time.deltaTime;
 		gameTimer -= Time.deltaTime;
-		
+
 		// if it's time to take a turn
 		if (turnTimer >= turnLength) {
 			// reset the turn timer
 			turnTimer = 0;
-		
-			// DEBUG ONLY
-			// Make a random cube colored
-			// 0 is white and 1 is grey, so use 2-7
-			int randColor = Random.Range(2, 7);
-			int randX = Random.Range(0, gridWidth);
-			int randY = Random.Range(0, gridHeight);
-			cubes[randX,randY].SetColor(randColor, cubeColors[randColor]);
-
 			
-			// Check for keyboard input
-			// ProcessKeyboardInput();
+			// if the player failed to move the cube from the Next Cube area
+			if (!nextCube.IsHidden()) {
+				// decrease score, but not below zero
+				score = Mathf.Max(score - 1, 0);
+				
+				// try to hide random white cube
+				if (HideRandomWhiteCube() == false) {
+					// if we couldn't, end the game
+					Application.LoadLevel("GameSummaryScene");
+				}
+			}
+			
+			// Show the next cube
+			ShowNextCube();
+		
 		}
 		
 		// end the game (after taking our turn above)
