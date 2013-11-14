@@ -4,7 +4,8 @@ using System.Collections;
 // Runs the logic for the whole game
 public class GameController : MonoBehaviour {
 	private GameCube[,] cubes;
-	private int score;
+	private int[] numWhiteCubes;
+	public static int score;
 	private Color[] cubeColors;
 	private int[] colorValues;
 	public int gridWidth, gridHeight;
@@ -20,10 +21,11 @@ public class GameController : MonoBehaviour {
 		gridHeight = 5;
 		
 		// initial values
-		turnLength = 2f;
-		gameLength = 60f;
+		turnLength = 3f;
+		gameLength = 90f;
 		turnTimer = 0f;
 		gameTimer = gameLength;
+		score = 0;
 		
 		// available colors
 		cubeColors = new Color[] {Color.white, Color.gray, Color.black, Color.blue, Color.green, Color.red, Color.yellow};
@@ -35,9 +37,14 @@ public class GameController : MonoBehaviour {
 
 		
 		cubes = new GameCube[gridWidth, gridHeight];
-		// create the grid
-		for (int x = 0; x < gridWidth; x++) {
-			for (int y = 0; y < gridHeight; y++) {
+		numWhiteCubes = new int[gridHeight];
+		// create the grid, row by row
+		for (int y = 0; y < gridHeight; y++) {
+			// track the number of white cubes
+			numWhiteCubes[y] = gridWidth;
+			
+			// create each cube in the row
+			for (int x = 0; x < gridWidth; x++) {
 				cubes[x,y] = new GameCube(x, y, (GameObject) Instantiate(aCube, new Vector3(x*2 - 7, y*2 - 3, 2), Quaternion.identity));
 			}
 		}
@@ -78,7 +85,7 @@ public class GameController : MonoBehaviour {
 			}
 		}
 		
-		// if the cube is white AND we had an active cube already && the cubes are adjacent
+		// if the cube is white AND we had an active cube already AND the cubes are adjacent
 		else if (cubes[x,y].GetColorIndex() == 0 && activeCubeX > -1 && IsAdjacent(x,y,activeCubeX,activeCubeY) ) {
 			
 			// set the clicked cube to the active cube's color
@@ -88,6 +95,11 @@ public class GameController : MonoBehaviour {
 			// set the previous cube to white, and deactivate it
 			cubes[activeCubeX, activeCubeY].SetColor(0, cubeColors[0]);
 			cubes[activeCubeX, activeCubeY].SetActive(false);
+			
+			// update the white cube count
+			// new row has one fewer, old row has one less. (Note: If old row and new row are the same, then this cancels itself out)
+			numWhiteCubes[y]--;
+			numWhiteCubes[activeCubeY]++;
 			
 			// set the new cube to be active and update the tracking
 			cubes[x,y].SetActive(true);
@@ -174,7 +186,7 @@ public class GameController : MonoBehaviour {
 					
 					// if we got a same color valid score
 					case ScoreResult.Same:
-						score += 5;
+						score += 10;
 						CreateGrayPlus(x, y);
 						break;
 					
@@ -182,6 +194,20 @@ public class GameController : MonoBehaviour {
 					case ScoreResult.Rainbow:
 						score += 5;
 						CreateGrayPlus(x, y);
+						break;
+
+					// if we got a super rainbow score
+					// currently not detected
+					case ScoreResult.Rainbow9:
+						score += 15;
+						//CreateGraySuperPlus(x, y);
+						break;
+
+					// if we got a super same plus score
+					// currently not detected
+					case ScoreResult.Same9:
+						score += 40;
+						//CreateGraySuperPlus(x, y);
 						break;
 				}
 			}
@@ -198,12 +224,24 @@ public class GameController : MonoBehaviour {
 		
 		// all the same, and not white and not gray
 		if (c1 != 0 && c1 != 1 && c1 == c2 && c1 == c3 && c1 == c4 && c1 == c5) {
-			return ScoreResult.Same;
+			// do we have a super plus with 9 cubes?
+			if (CheckForSuperPlus(x, y, ScoreResult.Same)) {
+				return ScoreResult.Same9;
+			}
+			else {
+				return ScoreResult.Same;
+			}
 		}
 		
 		// Check for rainbow, which is only possible if the math below is true, based on the color values we picked as a power of 2
 		else if (colorValues[c1] + colorValues[c2] + colorValues[c3] + colorValues[c4] + colorValues[c5] == 62) {
-			return ScoreResult.Rainbow;
+			// do we have a super plus with 9 cubes?
+			if (CheckForSuperPlus(x, y, ScoreResult.Rainbow)) {
+				return ScoreResult.Rainbow9;
+			}
+			else {
+				return ScoreResult.Rainbow;
+			}
 		}
 		
 		// If we didn't get a same match or rainbow match, no score
@@ -213,6 +251,11 @@ public class GameController : MonoBehaviour {
 			
 	}
 	
+	private bool CheckForSuperPlus (int x, int y, ScoreResult r) {
+		// do some logic here!
+		return false;
+	}
+	
 	private void CreateGrayPlus (int x, int y) {
 		// 1 is gray
 		cubes[x, y].SetColor(1, cubeColors[1]);
@@ -220,6 +263,19 @@ public class GameController : MonoBehaviour {
 		cubes[x-1, y].SetColor(1, cubeColors[1]);
 		cubes[x, y+1].SetColor(1, cubeColors[1]);
 		cubes[x, y-1].SetColor(1, cubeColors[1]);
+		
+		// if any of them are the active cube, deactivate it
+		if ( x == activeCubeX && y == activeCubeY ||
+			 x + 1 == activeCubeX && y == activeCubeY ||
+			 x - 1 == activeCubeX && y == activeCubeY ||
+			 x == activeCubeX && y + 1 == activeCubeY ||
+			 x == activeCubeX && y - 1 == activeCubeY) {
+			// deactivate the active cube
+			cubes[activeCubeX, activeCubeY].SetActive(false);
+			activeCubeX = -1;
+			activeCubeY = -1;
+		}
+			
 	}
 	
 	private void ShowNextCube () {
@@ -234,30 +290,71 @@ public class GameController : MonoBehaviour {
 	}
 	
 	private bool HideRandomWhiteCube() {
-		// DEBUG ONLY
-		// Make a random cube colored
-		// 0 is white and 1 is grey, so use 2-7
-		int randColor = Random.Range(2, 7);
-		int randX = Random.Range(0, gridWidth);
-		int randY = Random.Range(0, gridHeight);
 		
-		// we should check to see if it's already hidden first!
-		// TESTING ONLY
-		cubes[randX,randY].SetHidden(true);	
+		// calculate the total number of white cubes
+		int totalWhiteCubes = 0;
+		for (int i = 0; i < numWhiteCubes.Length; i++) {
+			totalWhiteCubes += numWhiteCubes[i];
+		}
+		
+		// if there are no white cubes left, return false
+		if (totalWhiteCubes == 0) {
+			return false;	
+		}
+		
+		// set starting values
+		int randX = -1;
+		int randY = -1;
+		
+		// we know there's at least one valid location, so this won't be an infinite loop
+		// while we haven't found a white cube, keep trying
+		while (randX < 0) {
+			// try a random cube
+			randX = Random.Range(0, gridWidth);
+			randY = Random.Range(0, gridHeight);
+			
+			// if the random cube isn't white (0 is white)
+			if (cubes[randX, randY].GetColorIndex() > 0) {
+				// reset the values and try again
+				randX = -1;
+				randY = -1;
+			}
+		}
+		
+		// hide the chosen cube
+		cubes[randX,randY].SetHidden(true);
+		
+		// update the white cube count
+		numWhiteCubes[randY]--;
 		
 		return true;
 	}
 
 	private bool ColorRandomWhiteCube(int row) {
-		// DEBUG ONLY
-		// we should have a more intelligent random algorithm here
-		int randX = Random.Range(0, gridWidth);
 		
-		// we should check to see if it's already hidden first!
-		// TESTING ONLY
-
+		// If the row is already full, return false
+		if (numWhiteCubes[row] == 0) {
+			return false;
+		}
+		
+		int col = -1;
+		// we know there's at least one valid location
+		while (col < 0) {
+			// try a random column
+			col = Random.Range(0, gridWidth);
+			
+			// if it's not white (0 is white)
+			if (cubes[col, row].GetColorIndex() > 0) {
+				// then reset column to -1 and keep trying
+				col = -1;
+			}
+		}
+		
 		// set the chosen cube to the color of the next cube
-		cubes[randX,row].SetColor(nextCube.GetColorIndex(), cubeColors[nextCube.GetColorIndex()]);	
+		cubes[col,row].SetColor(nextCube.GetColorIndex(), cubeColors[nextCube.GetColorIndex()]);	
+		
+		// update the white cube count
+		numWhiteCubes[row]--;
 			
 		return true;
 	}
@@ -296,7 +393,18 @@ public class GameController : MonoBehaviour {
 		// end the game (after taking our turn above)
 		if (gameTimer <= 0) {
 			Application.LoadLevel("GameSummaryScene");
-		}
+		}	
+	}
+	
+	void OnGUI () {
+		GUIStyle style = new GUIStyle();
+		style.fontSize = 36;
+		style.alignment = TextAnchor.MiddleCenter;
+		
+		GUI.Box (new Rect(370, 45, 100, 50), "Next\nCube", style);
+		
+		GUI.Box (new Rect(800, 45, 100, 60), "Score\n"+score, style);
 		
 	}
+	
 }

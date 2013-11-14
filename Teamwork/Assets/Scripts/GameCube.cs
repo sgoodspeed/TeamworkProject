@@ -7,6 +7,7 @@ public class GameCube {
 	private int x, y;
 	private GameObject cube;
 	private bool active, hidden;
+	private float scaleFactor = 0.6f;
 	
 	// Constructor. When we create the GameCube object, we'll set the values of various important items
 	public GameCube (int startX, int startY, GameObject aCube) {
@@ -18,7 +19,6 @@ public class GameCube {
 		cube = aCube;
 		cube.GetComponent<CubeBehavior>().x = x;
 		cube.GetComponent<CubeBehavior>().y = y;
-	
 	}
 	
 	// Alternate Constructor for the Next Cube, which doesn't go in the grid, and isn't clickable
@@ -52,7 +52,16 @@ public class GameCube {
 		if (!hidden) {
 			active = act;
 		
-			// turn on or off a visual effect based on whether or not it's active
+			// make the cube bigger
+			if (active) {
+				// grow the cube
+				cube.transform.localScale += new Vector3(scaleFactor, scaleFactor, scaleFactor);
+			}
+			// the cube just deactivated
+			else {
+				// shrink the cube by the inverse of the scale factor
+				cube.transform.localScale -= new Vector3(scaleFactor, scaleFactor, scaleFactor);
+			}
 		}
 		
 	}
