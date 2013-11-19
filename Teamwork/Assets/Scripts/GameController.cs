@@ -3,30 +3,46 @@ using System.Collections;
 
 // Runs the logic for the whole game
 public class GameController : MonoBehaviour {
+	// to track score across scenes, make it public static
+	public static int score;
+	
+	// these are public so they are exposed in the editor
+	// the game designer can change these values as appropriate while the game is running
+	public int gridWidth, gridHeight;
+	public float turnLength, gameLength;
+	public int samePlusPoints, rainbowPlusPoints, sameDoublePlusPoints, rainbowDoublePlusPoints, mixedDoublePlusPoints;
+
+	// these are public so we can assign the prefabs in unity
+	public GameObject aCube, unclickableCube;
+
+	// these are private because we should only be changing them via the code here
 	private GameCube[,] cubes;
 	private int[] numWhiteCubes;
-	public static int score;
 	private Color[] cubeColors;
 	private int[] colorValues;
-	public int gridWidth, gridHeight;
-	public GameObject aCube, unclickableCube;
 	private GameCube nextCube;
 	private int activeCubeX, activeCubeY;
-	public float turnLength, gameLength;
 	private float turnTimer, gameTimer;
-
+	
 	// Use this for initialization
 	void Start () {
 		gridWidth = 8;
 		gridHeight = 5;
 		
 		// initial values
-		turnLength = 3f;
-		gameLength = 90f;
+		turnLength = 2f;
+		gameLength = 120f;
 		turnTimer = 0f;
 		gameTimer = gameLength;
 		score = 0;
 		
+		// scoring values
+		samePlusPoints = 10;
+		rainbowPlusPoints = 5;
+		sameDoublePlusPoints = 40;
+		rainbowDoublePlusPoints = 20;
+		mixedDoublePlusPoints = 30;
+
 		// available colors
 		cubeColors = new Color[] {Color.white, Color.gray, Color.black, Color.blue, Color.green, Color.red, Color.yellow};
 		colorValues = new int[] {0, 1, 2, 4, 8, 16, 32};
@@ -34,8 +50,7 @@ public class GameController : MonoBehaviour {
 		// track the active cube. Default to -1 at initialization
 		activeCubeX = -1;
 		activeCubeY = -1;
-
-		
+				
 		cubes = new GameCube[gridWidth, gridHeight];
 		numWhiteCubes = new int[gridHeight];
 		// create the grid, row by row
@@ -130,6 +145,7 @@ public class GameController : MonoBehaviour {
 	}
 	
 	private void ProcessKeyboardInput () {
+		// default invalid value that we may overwrite later
 		int row = -1;
 		
 		// Only do something if the NextCube is not hidden
@@ -157,7 +173,7 @@ public class GameController : MonoBehaviour {
 			
 			// if we detected a valid key
 			if (row >= 0) {
-				// hide a random white cube in the appropriate row
+				// attempt to hide a random white cube in the appropriate row
 				if (ColorRandomWhiteCube(row) == false) {
 					// and if we can't, end the game
 					Application.LoadLevel("GameSummaryScene");
@@ -165,6 +181,9 @@ public class GameController : MonoBehaviour {
 				
 				// hide the next cube display
 				nextCube.SetHidden(true);
+				
+				// Since we just placed a colored cube, check to see if we scored
+				CheckForScore();
 			}
 		}
 	}
@@ -172,47 +191,84 @@ public class GameController : MonoBehaviour {
 
 	// check the whole grid to see if there is a valid score
 	private void CheckForScore() {
-
+		// a helper variable to track score results
+		ScoreResult[,] scoreResults = new ScoreResult[gridWidth, gridHeight];
+		
 		// avoid checking the top or bottom rows, or left or right edges
 		for (int x = 1; x < gridWidth - 1; x++) {
 			for (int y = 1; y < gridHeight - 1; y++) {
-				
-				// check for the plus defined by the center cube in the potential plus
-				switch (CheckForPlus(x, y)) {
-					
-					// if we didn't get a valid score, move on
-					case ScoreResult.None:
-						break;
-					
-					// if we got a same color valid score
-					case ScoreResult.Same:
-						score += 10;
-						CreateGrayPlus(x, y);
-						break;
-					
-					// if we got a rainbow color valid score
-					case ScoreResult.Rainbow:
-						score += 5;
-						CreateGrayPlus(x, y);
-						break;
-
-					// if we got a super rainbow score
-					// currently not detected
-					case ScoreResult.Rainbow9:
-						score += 15;
-						//CreateGraySuperPlus(x, y);
-						break;
-
-					// if we got a super same plus score
-					// currently not detected
-					case ScoreResult.Same9:
-						score += 40;
-						//CreateGraySuperPlus(x, y);
-						break;
-				}
+				// check for a plus once, store the result, and then do game logic later.
+				// This way, we avoid checking and rechecking the same cubes over and over.
+				scoreResults[x,y] = CheckForPlus (x, y);
 			}
 		}
 		
+		// look at the results and see if we find any double pluses or regular pluses
+		for (int x = 1; x < gridWidth - 1; x++) {
+			for (int y = 1; y < gridHeight - 1; y++) {
+
+				// if we don't have a score
+				if (scoreResults[x,y] == ScoreResult.None) {
+					continue; // this continues to the next iteration of the for() loop
+				}
+				
+				// Otherwise, we have a valid plus of some sort,
+				// so we turn this group of cubes gray
+				CreateGrayPlus(x, y);
+			
+				// do we have a horizontal double plus, within the bounds of the grid?
+				// NOTE: if the first comparison is false (x < gridWidth-3), the second comparison won't ever be checked.
+				// Therefore, the order of these comparisons is important here, to avoid going outside the grid and getting an ArrayOutOfBounds exception
+				if (x < gridWidth - 3 && scoreResults[x+2, y] != ScoreResult.None) {
+					CreateGrayPlus(x+2, y);
+					ScoreDoublePlus(scoreResults[x,y], scoreResults[x+2, y]);
+					// change the double plus score result to none to avoid double counting it
+					scoreResults[x+2, y] = ScoreResult.None;
+				}
+			
+				// do we have a vertical double plus, within the bounds of the grid?
+				// NOTE: if the first comparison is false (y < gridHeight-3), the second comparison won't ever be checked.
+				// Therefore, the order of these comparisons is important here, to avoid going outside the grid and getting an ArrayOutOfBounds exception
+				else if (y < gridHeight - 3 && scoreResults[x, y+2] != ScoreResult.None) {
+					CreateGrayPlus(x, y+2);
+					ScoreDoublePlus(scoreResults[x,y], scoreResults[x, y+2]);
+					// change the double plus score result to none to avoid double counting it
+					scoreResults[x, y+2] = ScoreResult.None;
+				}
+			
+				// no double plus, just a normal plus result
+				else {
+					if (scoreResults[x,y] == ScoreResult.Same) {
+						score += samePlusPoints;
+					}
+					else if (scoreResults[x,y] == ScoreResult.Rainbow) {
+						score += rainbowPlusPoints;
+					}
+				}
+			}
+		}
+	}
+		
+	// only called when we know for sure we have a double plus
+	private void ScoreDoublePlus (ScoreResult originalPlus, ScoreResult doublePlus) {
+		// error checking, just to be sure:
+		if (originalPlus == ScoreResult.None || doublePlus == ScoreResult.None) {
+			// we should never get here
+			return;
+		}
+
+		// double same
+		if (originalPlus == ScoreResult.Same && doublePlus == ScoreResult.Same) {
+			score += sameDoublePlusPoints;		
+		}
+		// double rainbow https://www.youtube.com/watch?v=OQSNhk5ICTI
+		else if (originalPlus == ScoreResult.Rainbow && doublePlus == ScoreResult.Rainbow) {
+			score += rainbowDoublePlusPoints;
+		}
+		// double mixed
+		else {
+			score += mixedDoublePlusPoints;
+		}
 	}
 	
 	private ScoreResult CheckForPlus (int x, int y) {
@@ -224,36 +280,18 @@ public class GameController : MonoBehaviour {
 		
 		// all the same, and not white and not gray
 		if (c1 != 0 && c1 != 1 && c1 == c2 && c1 == c3 && c1 == c4 && c1 == c5) {
-			// do we have a super plus with 9 cubes?
-			if (CheckForSuperPlus(x, y, ScoreResult.Same)) {
-				return ScoreResult.Same9;
-			}
-			else {
-				return ScoreResult.Same;
-			}
+			return ScoreResult.Same;
 		}
 		
 		// Check for rainbow, which is only possible if the math below is true, based on the color values we picked as a power of 2
 		else if (colorValues[c1] + colorValues[c2] + colorValues[c3] + colorValues[c4] + colorValues[c5] == 62) {
-			// do we have a super plus with 9 cubes?
-			if (CheckForSuperPlus(x, y, ScoreResult.Rainbow)) {
-				return ScoreResult.Rainbow9;
-			}
-			else {
-				return ScoreResult.Rainbow;
-			}
+			return ScoreResult.Rainbow;
 		}
 		
 		// If we didn't get a same match or rainbow match, no score
 		else {
 			return ScoreResult.None;
 		}
-			
-	}
-	
-	private bool CheckForSuperPlus (int x, int y, ScoreResult r) {
-		// do some logic here!
-		return false;
 	}
 	
 	private void CreateGrayPlus (int x, int y) {
@@ -274,8 +312,7 @@ public class GameController : MonoBehaviour {
 			cubes[activeCubeX, activeCubeY].SetActive(false);
 			activeCubeX = -1;
 			activeCubeY = -1;
-		}
-			
+		}		
 	}
 	
 	private void ShowNextCube () {
@@ -355,6 +392,8 @@ public class GameController : MonoBehaviour {
 		
 		// update the white cube count
 		numWhiteCubes[row]--;
+		
+		
 			
 		return true;
 	}
@@ -397,12 +436,14 @@ public class GameController : MonoBehaviour {
 	}
 	
 	void OnGUI () {
+		// We could also do this using GUISkin. See the Game Summary for an example of GUISkin.
 		GUIStyle style = new GUIStyle();
 		style.fontSize = 36;
 		style.alignment = TextAnchor.MiddleCenter;
 		
 		GUI.Box (new Rect(370, 45, 100, 50), "Next\nCube", style);
 		
+		// the \n after Score means "new line"
 		GUI.Box (new Rect(800, 45, 100, 60), "Score\n"+score, style);
 		
 	}

@@ -17,11 +17,14 @@ public class GameCube {
 		active = false;
 		hidden = false;
 		cube = aCube;
+		// store the x and y variables on the cube behavior script as well, so the OnMouseDown method on that cube knows it's x and y position in the grid (regardless of xyz position in unity space)
 		cube.GetComponent<CubeBehavior>().x = x;
 		cube.GetComponent<CubeBehavior>().y = y;
 	}
 	
 	// Alternate Constructor for the Next Cube, which doesn't go in the grid, and isn't clickable
+	// When we call this contructor, we send it an unclickableCube prefab instead of the normal cube prefab
+	// The unclickableCube prefab doesn't have a CubeBehavior script on it, so it never calls OnMouseDown
 	public GameCube (GameObject aCube) {
 		colorIndex = 0;
 		active = false;
@@ -59,8 +62,8 @@ public class GameCube {
 			}
 			// the cube just deactivated
 			else {
-				// shrink the cube by the inverse of the scale factor
-				cube.transform.localScale -= new Vector3(scaleFactor, scaleFactor, scaleFactor);
+				// reset to normal size
+				cube.transform.localScale = new Vector3(1f, 1f, 1f);
 			}
 		}
 		
